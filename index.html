@@ -3,108 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Whip Sim Elite v8.1</title>
+    <title>Whip Simulator Pro</title>
     <style>
         :root {
-            /* Default: Pure Light */
-            --bg: #f0f0f2; --surface: rgba(0, 0, 0, 0.05);
-            --text: #111; --accent: #000; --panel: blur(25px);
+            --blue: #00a2ff; --green: #44ff44; --red: #ff4444; --gold: #ffd700;
+            --ui-bg: rgba(0, 0, 0, 0.6);
         }
-        [data-theme="dark"] {
-            --bg: #050505; --surface: rgba(255, 255, 255, 0.05);
-            --text: #fff; --accent: #fff;
-        }
-        [data-theme="keith"] {
-            --bg: #1a1612; --surface: rgba(139, 69, 19, 0.1);
-            --text: #d2b48c; --accent: #8b4513;
-        }
-
         body { 
-            margin: 0; background: var(--bg); color: var(--text); 
-            font-family: 'Inter', sans-serif; 
-            overflow: hidden; touch-action: none; transition: 0.4s ease;
+            margin: 0; background: #111; color: white; 
+            font-family: 'Arial Black', sans-serif; overflow: hidden; touch-action: none;
         }
 
-        #control-panel {
-            position: absolute; top: 15px; left: 15px; z-index: 1000;
-            background: var(--surface); backdrop-filter: var(--panel);
-            border: 1px solid rgba(0,0,0,0.1); border-radius: 20px;
-            padding: 15px; width: 220px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        /* TOP RIGHT: Currencies */
+        #currency-hud {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+        }
+        .currency-box {
+            background: var(--ui-bg); padding: 8px 15px; border-radius: 50px;
+            border: 3px solid white; display: flex; align-items: center; gap: 10px; min-width: 120px;
+        }
+        .currency-box img { width: 30px; height: 30px; }
+        .currency-box span { font-size: 20px; text-shadow: 2px 2px #000; }
+
+        /* LEFT SIDE: Menu Buttons */
+        #sidebar {
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 15px; z-index: 1000;
+        }
+        .menu-btn {
+            width: 65px; height: 65px; background: var(--ui-bg); border: 4px solid white;
+            border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.1s;
+        }
+        .menu-btn:active { transform: scale(0.9); }
+        .menu-btn img { width: 80%; height: 80%; object-fit: contain; }
+
+        /* BOTTOM LEFT: Energy & Boosts */
+        #status-hud {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .energy-container { width: 200px; height: 30px; background: #333; border: 3px solid white; border-radius: 10px; overflow: hidden; position: relative; }
+        #energy-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #44ff44, #ccff00); transition: 0.3s; }
+        .energy-text { position: absolute; width: 100%; text-align: center; top: 2px; font-size: 14px; color: white; text-shadow: 1px 1px #000; }
+
+        #boost-tray { display: flex; gap: 10px; }
+        .boost-icon {
+            width: 50px; height: 50px; background: rgba(0,255,0,0.2); border: 2px solid var(--green);
+            border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 10px;
         }
 
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
-        .combo-badge { color: #ff3e3e; }
-
-        select, button { 
-            width: 100%; background: var(--surface); color: var(--text); 
-            border: 1px solid var(--text); padding: 10px; 
-            border-radius: 10px; margin-top: 5px; cursor: pointer; font-weight: 600;
-        }
-
-        /* Fixed Centering */
-        #stage { 
-            position: fixed; inset: 0;
-            display: flex; align-items: center; justify-content: center; 
-            z-index: 10; pointer-events: none;
-        }
-
-        .target-box { 
-            display: flex; align-items: center; justify-content: center;
-            transition: transform 0.05s; pointer-events: auto;
-        }
-        
-        .target-box img { 
-            max-width: 80vw; max-height: 70vh; 
-            border-radius: 15px; border: 3px solid var(--accent); 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.2); 
-            object-fit: contain; display: block;
-        }
-
-        #portal { position: fixed; inset: 0; z-index: 5000; display: none; background: #000; }
-
-        .hit-bubble {
-            position: absolute; pointer-events: none; z-index: 2000;
-            background: #ffec00; color: #000; padding: 8px 16px;
-            font-weight: 900; font-size: 24px; border: 3px solid #000;
-            clip-path: polygon(0% 0%, 100% 0%, 85% 50%, 100% 100%, 0% 100%);
-            animation: hitPop 0.3s forwards;
-        }
-
-        @keyframes hitPop { 0% { transform: scale(0.5); } 100% { transform: scale(1.2) translateY(-80px); opacity: 0; } }
+        /* STAGE */
+        #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .target { pointer-events: auto; cursor: crosshair; }
+        .target img { max-width: 70vw; max-height: 60vh; border: 5px solid white; border-radius: 20px; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
 
         canvas { position: fixed; inset: 0; pointer-events: none; z-index: 100; }
     </style>
 </head>
-<body data-theme="light">
+<body>
 
-<div id="control-panel">
-    <div class="stat-row">
-        <span>Master v8.1</span>
-        <span class="combo-badge" id="combo-text">Combo x0</span>
+<div id="currency-hud">
+    <div class="currency-box">
+        <img src="Coin.png" alt="Coins">
+        <span id="gold-txt">0</span>
     </div>
-    <select id="themeSwitch">
-        <option value="light">Pure Light</option>
-        <option value="dark">Onyx Dark</option>
-        <option value="keith">Keith Industrial</option>
-    </select>
-    <select id="whipSwitch">
-        <option value="leather">Leather</option>
-        <option value="chain">Chain</option>
-        <option value="plasma">Plasma</option>
-    </select>
-    <button onclick="document.getElementById('f').click()">Upload Target</button>
-    <input type="file" id="f" hidden accept="image/*">
+    <div class="currency-box" style="border-color: var(--blue);">
+        <img src="Gem.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3209/3209944.png'" alt="Gems">
+        <span id="gem-txt">0</span>
+    </div>
 </div>
 
-<div id="portal">
-    <button style="position:absolute;top:15px;right:15px;width:auto;z-index:5001" onclick="closePortal()">CLOSE</button>
-    <iframe id="p-frame" src="" style="width:100%;height:100%;border:none;"></iframe>
+<div id="sidebar">
+    <div class="menu-btn" style="background: var(--red);"><img src="Shop.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3594/3594363.png'"></div>
+    <div class="menu-btn" style="background: #ffaa00;"><img src="Pets.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/616/616408.png'"></div>
+    <div class="menu-btn" style="background: var(--blue);"><img src="Settings.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3953/3953226.png'"></div>
+</div>
+
+<div id="status-hud">
+    <div class="energy-container">
+        <div id="energy-bar"></div>
+        <div class="energy-text">ENERGY: <span id="en-val">100</span>%</div>
+    </div>
+    <div id="boost-tray">
+        <div class="boost-icon" id="boost-x2"><div>X2 💰</div><div id="timer-x2">05:00</div></div>
+    </div>
 </div>
 
 <div id="stage">
-    <div id="t-box" class="target-box" style="display:none">
+    <div class="target" id="t-box" style="display:none">
         <img id="t-img" src="">
     </div>
+    <input type="file" id="f" hidden accept="image/*">
+    <button id="upload-btn" onclick="document.getElementById('f').click()" style="pointer-events:auto; padding:20px; border-radius:10px; font-weight:bold;">UPLOAD TARGET IMAGE</button>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -112,130 +105,107 @@
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const comboText = document.getElementById('combo-text');
-    const portal = document.getElementById('portal');
-    const pFrame = document.getElementById('p-frame');
-    const tBox = document.getElementById('t-box');
-    const tImg = document.getElementById('t-img');
-
+    
+    let state = { gold: 0, gems: 0, energy: 100, isBoosted: true };
     let mouse = { x: -100, y: -100 };
     let points = [];
-    let segments = 45;
-    let combo = 0;
-    let lastHit = 0;
+    let segments = 35;
 
-    const urls = [
-        "https://geekprank.com/hacker/",
-        "https://en.wikipedia.org/wiki/Whip",
-        "https://www.bing.com"
-    ];
-
-    const actions = ["OUCH!", "STOP!", "PAW!", "MASTER!", "AGH!"];
+    // Load your Whip Asset
+    const whipHandleImg = new Image();
+    whipHandleImg.src = 'IMG_8807.png';
 
     for(let i=0; i<segments; i++) points.push({x:0, y:0, oldX:0, oldY:0});
 
     window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.onresize();
 
-    document.getElementById('themeSwitch').onchange = (e) => document.body.setAttribute('data-theme', e.target.value);
-    function closePortal() { portal.style.display = 'none'; pFrame.src = ""; combo = 0; comboText.innerText = "Combo x0"; }
-
-    document.getElementById('f').onchange = (e) => {
-        const url = URL.createObjectURL(e.target.files[0]);
-        tImg.src = url;
-        tBox.style.display = 'flex';
-    };
-
-    const updateMouse = (e) => {
-        mouse.x = e.touches ? e.touches[0].clientX : e.clientX;
-        mouse.y = e.touches ? e.touches[0].clientY : e.clientY;
-    };
-    window.addEventListener('mousemove', updateMouse);
-    window.addEventListener('touchmove', (e) => { updateMouse(e); e.preventDefault(); }, {passive:false});
-
+    // Physics Engine
     function solve() {
         points[0].x = mouse.x; points[0].y = mouse.y;
         for(let i=1; i<segments; i++) {
             let p = points[i];
-            let vx = (p.x - p.oldX) * 0.88;
-            let vy = (p.y - p.oldY) * 0.88;
+            let vx = (p.x - p.oldX) * 0.82;
+            let vy = (p.y - p.oldY) * 0.82;
             p.oldX = p.x; p.oldY = p.y;
-            p.x += vx; p.y += vy + 0.5;
-            for(let j=0; j<4; j++) {
+            p.x += vx; p.y += vy + 0.8;
+            for(let j=0; j<5; j++) {
                 let prev = points[i-1];
                 let dx = p.x - prev.x, dy = p.y - prev.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                let diff = (9 - dist) / dist;
+                let diff = (8 - dist) / dist;
                 p.x += dx * diff; p.y += dy * diff;
             }
         }
     }
 
-    function draw() {
+    function render() {
         ctx.clearRect(0,0,canvas.width, canvas.height);
         solve();
-        let mode = document.getElementById('whipSwitch').value;
-        const color = getComputedStyle(document.body).getPropertyValue('--accent');
-        
-        ctx.lineJoin = "round"; ctx.lineCap = "round";
-        for(let i=0; i<segments-1; i++) {
-            ctx.beginPath();
-            ctx.moveTo(points[i].x, points[i].y);
-            ctx.lineTo(points[i+1].x, points[i+1].y);
-            if(mode === 'chain') {
-                ctx.strokeStyle = i % 2 === 0 ? "#888" : "#444";
-                ctx.lineWidth = 10;
-            } else if(mode === 'plasma') {
-                ctx.strokeStyle = "#fff"; ctx.lineWidth = 4;
-                ctx.shadowBlur = 10; ctx.shadowColor = "#0ff";
-            } else {
-                ctx.strokeStyle = color;
-                ctx.lineWidth = Math.max(2, 14 - (i * 0.3));
-                ctx.shadowBlur = 0;
-            }
-            ctx.stroke();
-        }
-        requestAnimationFrame(draw);
-    }
-    draw();
 
-    const checkHit = (e) => {
-        if(tBox.style.display === 'none' || portal.style.display === 'block') return;
+        // Draw Whip
+        ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for(let i=1; i<segments; i++) ctx.lineTo(points[i].x, points[i].y);
+        ctx.stroke();
+
+        // Draw Handle from your IMG_8807.png
+        ctx.save();
+        ctx.translate(points[0].x, points[0].y);
+        let angle = Math.atan2(points[5].y - points[0].y, points[5].x - points[0].x);
+        ctx.rotate(angle);
+        ctx.drawImage(whipHandleImg, -10, -10, 60, 20); // Adjust size as needed
+        ctx.restore();
+
+        requestAnimationFrame(render);
+    }
+    render();
+
+    // Interaction Logic
+    const handleHit = (e) => {
+        if(state.energy <= 0) return;
+
+        const img = document.getElementById('t-img');
+        const rect = img.getBoundingClientRect();
         const x = e.touches ? e.touches[0].clientX : e.clientX;
         const y = e.touches ? e.touches[0].clientY : e.clientY;
-        const r = tImg.getBoundingClientRect();
 
-        if(x > r.left && x < r.right && y > r.top && y < r.bottom) {
-            const now = Date.now();
-            // Combo x10 + Hard Cooldown (300ms)
-            combo = (now - lastHit < 300) ? combo + 1 : 1;
-            lastHit = now;
-            comboText.innerText = "Combo x" + combo;
-
-            if(combo >= 10) {
-                pFrame.src = urls[Math.floor(Math.random()*urls.length)];
-                portal.style.display = 'block';
-            }
-
-            tBox.style.transform = `scale(0.9) rotate(${(Math.random()-0.5)*15}deg)`;
-            setTimeout(()=> tBox.style.transform = "scale(1)", 50);
-
-            const b = document.createElement('div');
-            b.className = 'hit-bubble';
-            b.innerText = actions[Math.floor(Math.random()*actions.length)];
-            b.style.left = (x - 40) + 'px'; b.style.top = (y - 40) + 'px';
-            document.body.appendChild(b);
-            setTimeout(()=> b.remove(), 300);
-
-            window.speechSynthesis.cancel();
-            let s = new SpeechSynthesisUtterance("STOP");
-            s.pitch = 1.2 + (combo * 0.1);
-            window.speechSynthesis.speak(s);
+        if(x > rect.left && x < rect.right && y > rect.top && y < rect.bottom) {
+            // Mechanics
+            state.gold += state.isBoosted ? 20 : 10;
+            state.energy -= 2;
+            
+            // UI Updates
+            document.getElementById('gold-txt').innerText = state.gold;
+            document.getElementById('en-val').innerText = Math.max(0, state.energy);
+            document.getElementById('energy-bar').style.width = state.energy + "%";
+            
+            // Animation
+            document.getElementById('t-box').style.transform = "scale(0.9) rotate(5deg)";
+            setTimeout(()=> document.getElementById('t-box').style.transform="scale(1)", 50);
         }
     };
 
-    window.addEventListener('mousedown', checkHit);
-    window.addEventListener('touchstart', checkHit);
+    // Auto Recharge Energy
+    setInterval(() => {
+        if(state.energy < 100) {
+            state.energy = Math.min(100, state.energy + 1);
+            document.getElementById('en-val').innerText = state.energy;
+            document.getElementById('energy-bar').style.width = state.energy + "%";
+        }
+    }, 1000);
+
+    // Setup
+    window.addEventListener('mousedown', handleHit);
+    window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    document.getElementById('f').onchange = (e) => {
+        document.getElementById('t-img').src = URL.createObjectURL(e.target.files[0]);
+        document.getElementById('t-box').style.display = 'block';
+        document.getElementById('upload-btn').style.display = 'none';
+    };
 </script>
 </body>
 </html>
