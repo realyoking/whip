@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Whip Sim Elite</title>
+    <style>
+        :root {
+            --bg: #050505; --surface: rgba(255, 255, 255, 0.05);
+            --text: #fff; --accent: #fff; --panel: blur(25px);
+        }
+        [data-theme="light"] {
+            --bg: #f0f0f2; --surface: rgba(0, 0, 0, 0.05);
+            --text: #111; --accent: #000;
+        }
+        [data-theme="keith"] {
+            --bg: #1a1612; --surface: rgba(139, 69, 19, 0.1);
+            --text: #d2b48c; --accent: #8b4513;
+        }
+
+        body { 
+            margin: 0; background: var(--bg); color: var(--text); 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            overflow: hidden; touch-action: none; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Glass UI */
+        #control-panel {
+            position: absolute; top: 20px; left: 20px; z-index: 1000;
+            background: var(--surface); backdrop-filter: var(--panel); -webkit-backdrop-filter: var(--panel);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 24px;
+            padding: 20px; width: 280px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .combo-badge { color: #ff3e3e; text-shadow: 0 0 10px rgba(255,0,0,0.5); }
+
+        select, button { 
+            width: 100%; background: var(--surface); color: var(--text); 
+            border: 1px solid rgba(255,255,255,0.1); padding: 12px; 
+            border-radius: 12px; margin-top: 8px; cursor: pointer; font-weight: 600;
+        }
+
+        /* Interaction Stage */
+        #stage { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .target-box { position: relative; z-index: 10; transition: transform 0.1s cubic-bezier(0.17, 0.89, 0.32, 1.49); }
+        .target-box img { max-width: 80vw; max-height: 60vh; border-radius: 20px; border: 4px solid var(--accent); box-shadow: 0 40px 100px rgba(0,0,0,0.5); }
+
+        /* Combo Iframe Overlay */
+        #portal {
+            position: fixed; inset: 0; z-index: 5000; display: none; background: #000;
+            animation: glitchOpen 0.3s ease-out;
+        }
+        @keyframes glitchOpen { 0% { clip-path: inset(50% 0 50% 0); } 100% { clip-path: inset(0 0 0 0); } }
+
+        /* Comic Hit Bubble */
+        .hit-bubble {
+            position: absolute; pointer-events: none; z-index: 2000;
+            background: #ffec00; color: #000; padding: 10px 20px;
+            font-weight: 900; font-size: 28px; border: 4px solid #000;
+            clip-path: polygon(0% 15%, 15% 15%, 15% 0%, 85% 0%, 85% 15%, 100% 15%, 100% 85%, 85% 85%, 85% 100%, 15% 100%, 15% 85%, 0% 85%);
+            animation: hitPop 0.4s forwards;
+        }
+        @keyframes hitPop { 
+            0% { transform: scale(0) rotate(-20deg); } 
+            50% { transform: scale(1.4) rotate(10deg); }
+            100% { transform: scale(1) translateY(-100px); opacity: 0; } 
+        }
+
+        canvas { position: fixed; inset: 0; pointer-events: none; z-index: 100; }
+    </style>
+</head>
+<body>
+
+<div id="control-panel">
+    <div class="stat-row">
+        <span>System Status</span>
+        <span class="combo-badge" id="combo-text">Combo x0</span>
+    </div>
+    <select id="themeSwitch">
+        <option value="dark">Onyx Dark</option>
+        <option value="light">Pure Light</option>
+        <option value="keith">Keith Industrial</option>
+    </select>
+    <select id="whipSwitch">
+        <option value="leather">Braided Leather</option>
+        <option value="chain">Heavy Shackles</option>
+        <option value="plasma">Plasma Pulse</option>
+    </select>
+    <button onclick="document.getElementById('f').click()">Load Target Image</button>
+    <input type="file" id="f" hidden accept="image/*">
+</div>
+
+<div id="portal">
+    <button style="position:absolute;top:20px;right:20px;width:auto;z-index:5001" onclick="closePortal()">CLOSE PORTAL</button>
+    <iframe id="p-frame" src="" style="width:100%;height:100%;border:none;"></iframe>
+</div>
+
+<div id="stage">
+    <div id="t-box" class="target-box" style="display:none">
+        <img id="t-img" src="">
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const comboText = document.getElementById('combo-text');
+    const portal = document.getElementById('portal');
+    const pFrame = document.getElementById('p-frame');
+
+    let mouse = { x: -100, y: -100 };
+    let points = [];
+    let segments = 50;
+    let combo = 0;
+    let lastHit = 0;
+
+    const urls = [
+        "https://cornhub.website/",
+        "https://geekprank.com/hacker/",
+        "https://en.wikipedia.org/wiki/Slavery",
+        "https://dictionary.cambridge.org/dictionary/english-chinese-traditional/whip"
+    ];
+
+    const actions = ["HELP!", "PLZ STOP!", "I AM SLAVE", "PAW!", "PLZ STOP MASTER"];
+
+    // Initialize Physics
+    for(let i=0; i<segments; i++) points.push({x:0, y:0, oldX:0, oldY:0});
+
+    window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    window.onresize();
+
+    document.getElementById('themeSwitch').onchange = (e) => document.body.setAttribute('data-theme', e.target.value);
+    function closePortal() { portal.style.display = 'none'; pFrame.src = ""; }
+
+    document.getElementById('f').onchange = (e) => {
+        const url = URL.createObjectURL(e.target.files[0]);
+        document.getElementById('t-img').src = url;
+        document.getElementById('t-box').style.display = 'block';
+    };
+
+    const input = (e) => {
+        mouse.x = e.touches ? e.touches[0].clientX : e.clientX;
+        mouse.y = e.touches ? e.touches[0].clientY : e.clientY;
+    };
+    window.addEventListener('mousemove', input);
+    window.addEventListener('touchmove', (e) => { input(e); e.preventDefault(); }, {passive:false});
+
+    function solve() {
+        points[0].x = mouse.x; points[0].y = mouse.y;
+        for(let i=1; i<segments; i++) {
+            let p = points[i];
+            let vx = (p.x - p.oldX) * 0.9;
+            let vy = (p.y - p.oldY) * 0.9;
+            p.oldX = p.x; p.oldY = p.y;
+            p.x += vx; p.y += vy + 0.6;
+
+            for(let j=0; j<5; j++) {
+                let prev = points[i-1];
+                let dx = p.x - prev.x, dy = p.y - prev.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let diff = (8 - dist) / dist;
+                p.x += dx * diff; p.y += dy * diff;
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        solve();
+        
+        let mode = document.getElementById('whipSwitch').value;
+        ctx.lineJoin = "round"; ctx.lineCap = "round";
+
+        for(let i=0; i<segments-1; i++) {
+            const w = Math.max(2, 16 - (i * 0.3));
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[i+1].x, points[i+1].y);
+
+            if(mode === 'chain') {
+                ctx.strokeStyle = i % 2 === 0 ? "#777" : "#333";
+                ctx.lineWidth = 12;
+            } else if(mode === 'plasma') {
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 15; ctx.shadowColor = "#00f0ff";
+            } else { // Braided Leather
+                ctx.strokeStyle = i % 2 === 0 ? "#221a14" : "#3d2b1f";
+                ctx.lineWidth = w;
+                ctx.shadowBlur = 0;
+            }
+            ctx.stroke();
+        }
+        requestAnimationFrame(draw);
+    }
+    draw();
+
+    const hit = (e) => {
+        const box = document.getElementById('t-box');
+        if(box.style.display === 'none') return;
+
+        const x = e.touches ? e.touches[0].clientX : e.clientX;
+        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        const r = box.getBoundingClientRect();
+
+        if(x > r.left && x < r.right && y > r.top && y < r.bottom) {
+            const now = Date.now();
+            combo = (now - lastHit < 500) ? combo + 1 : 1;
+            lastHit = now;
+            comboText.innerText = "Combo x" + combo;
+
+            if(combo >= 3) {
+                pFrame.src = urls[Math.floor(Math.random()*urls.length)];
+                portal.style.display = 'block';
+                combo = 0;
+            }
+
+            // Animate target
+            box.style.transform = `scale(0.9) rotate(${(Math.random()-0.5)*20}deg)`;
+            setTimeout(()=> box.style.transform = "scale(1)", 50);
+
+            // Pop Bubble
+            const b = document.createElement('div');
+            b.className = 'hit-bubble';
+            b.innerText = actions[Math.floor(Math.random()*actions.length)];
+            b.style.left = (x - 50) + 'px'; b.style.top = (y - 50) + 'px';
+            document.body.appendChild(b);
+            setTimeout(()=> b.remove(), 400);
+
+            // Sound
+            window.speechSynthesis.cancel();
+            let s = new SpeechSynthesisUtterance("STOP IT");
+            s.pitch = 1.5 + (combo * 0.1);
+            window.speechSynthesis.speak(s);
+        }
+    };
+
+    window.addEventListener('mousedown', hit);
+    window.addEventListener('touchstart', hit);
+</script>
+</body>
+</html>
