@@ -9,9 +9,25 @@
             --blue: #00a2ff; --green: #44ff44; --red: #ff4444; --gold: #ffd700;
             --ui-bg: rgba(0, 0, 0, 0.6);
         }
+        
         body { 
-            margin: 0; background: #111; color: white; 
-            font-family: 'Arial Black', sans-serif; overflow: hidden; touch-action: none;
+            margin: 0; 
+            /* SKY BACKGROUND */
+            background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
+            color: white; 
+            font-family: 'Arial Black', sans-serif; 
+            overflow: hidden; 
+            touch-action: none;
+        }
+
+        /* Moving Clouds Effect */
+        .cloud {
+            position: absolute; background: white; border-radius: 50px; opacity: 0.3;
+            animation: moveClouds linear infinite; z-index: 1;
+        }
+        @keyframes moveClouds {
+            from { left: -200px; }
+            to { left: 100vw; }
         }
 
         /* TOP RIGHT: Currencies */
@@ -21,10 +37,10 @@
         }
         .currency-box {
             background: var(--ui-bg); padding: 8px 15px; border-radius: 50px;
-            border: 3px solid white; display: flex; align-items: center; gap: 10px; min-width: 120px;
+            border: 3px solid white; display: flex; align-items: center; gap: 10px; min-width: 140px;
         }
-        .currency-box img { width: 30px; height: 30px; }
-        .currency-box span { font-size: 20px; text-shadow: 2px 2px #000; }
+        .currency-box img { width: 35px; height: 35px; object-fit: contain; }
+        .currency-box span { font-size: 22px; text-shadow: 2px 2px #000; }
 
         /* LEFT SIDE: Menu Buttons */
         #sidebar {
@@ -32,38 +48,56 @@
             display: flex; flex-direction: column; gap: 15px; z-index: 1000;
         }
         .menu-btn {
-            width: 65px; height: 65px; background: var(--ui-bg); border: 4px solid white;
-            border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: 0.1s;
+            width: 70px; height: 70px; background: var(--ui-bg); border: 4px solid white;
+            border-radius: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.1s; position: relative;
         }
+        .menu-btn:hover { transform: scale(1.05); }
         .menu-btn:active { transform: scale(0.9); }
-        .menu-btn img { width: 80%; height: 80%; object-fit: contain; }
+        .menu-btn img { width: 75%; height: 75%; object-fit: contain; }
+
+        /* SHOP MODAL */
+        #shop-modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .shop-content {
+            background: white; border: 8px solid var(--red); border-radius: 30px;
+            width: 80%; max-width: 500px; padding: 30px; color: #333; text-align: center;
+        }
+        .shop-item {
+            background: #eee; border-radius: 15px; padding: 15px; margin: 10px 0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
 
         /* BOTTOM LEFT: Energy & Boosts */
         #status-hud {
             position: absolute; bottom: 20px; left: 20px; z-index: 1000;
             display: flex; flex-direction: column; gap: 10px;
         }
-        .energy-container { width: 200px; height: 30px; background: #333; border: 3px solid white; border-radius: 10px; overflow: hidden; position: relative; }
+        .energy-container { width: 250px; height: 35px; background: #333; border: 3px solid white; border-radius: 12px; overflow: hidden; position: relative; }
         #energy-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #44ff44, #ccff00); transition: 0.3s; }
-        .energy-text { position: absolute; width: 100%; text-align: center; top: 2px; font-size: 14px; color: white; text-shadow: 1px 1px #000; }
+        .energy-text { position: absolute; width: 100%; text-align: center; top: 5px; font-size: 16px; color: white; text-shadow: 1px 1px #000; }
 
-        #boost-tray { display: flex; gap: 10px; }
-        .boost-icon {
-            width: 50px; height: 50px; background: rgba(0,255,0,0.2); border: 2px solid var(--green);
+        #boost-tray { display: flex; gap: 10px; min-height: 60px; }
+        .boost-active {
+            width: 60px; height: 60px; background: var(--ui-bg); border: 3px solid var(--green);
             border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 10px;
+            font-size: 11px; color: var(--green);
         }
 
         /* STAGE */
         #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10; }
-        .target { pointer-events: auto; cursor: crosshair; }
-        .target img { max-width: 70vw; max-height: 60vh; border: 5px solid white; border-radius: 20px; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        .target img { max-width: 65vw; max-height: 55vh; border: 6px solid white; border-radius: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
 
         canvas { position: fixed; inset: 0; pointer-events: none; z-index: 100; }
     </style>
 </head>
 <body>
+
+<div class="cloud" style="width:200px; height:60px; top:10%; animation-duration:20s;"></div>
+<div class="cloud" style="width:150px; height:50px; top:30%; animation-duration:25s; animation-delay:5s;"></div>
+<div class="cloud" style="width:250px; height:80px; top:15%; animation-duration:30s; animation-delay:2s;"></div>
 
 <div id="currency-hud">
     <div class="currency-box">
@@ -71,15 +105,29 @@
         <span id="gold-txt">0</span>
     </div>
     <div class="currency-box" style="border-color: var(--blue);">
-        <img src="Gem.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3209/3209944.png'" alt="Gems">
+        <img src="Gem.png" alt="Gems">
         <span id="gem-txt">0</span>
     </div>
 </div>
 
 <div id="sidebar">
-    <div class="menu-btn" style="background: var(--red);"><img src="Shop.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3594/3594363.png'"></div>
-    <div class="menu-btn" style="background: #ffaa00;"><img src="Pets.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/616/616408.png'"></div>
-    <div class="menu-btn" style="background: var(--blue);"><img src="Settings.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3953/3953226.png'"></div>
+    <div class="menu-btn" style="background: var(--red);" onclick="toggleShop()">
+        <img src="Shop.png" alt="Shop">
+    </div>
+    <div class="menu-btn" style="background: #ffaa00;">
+        <img src="Pets.png" alt="Pets">
+    </div>
+</div>
+
+<div id="shop-modal">
+    <div class="shop-content">
+        <h1 style="color:var(--red); margin-top:0;">SHOP</h1>
+        <div class="shop-item">
+            <span>X2 MONEY (5 mins)</span>
+            <button onclick="buyBoost()" style="padding:10px; background:var(--green); border:none; border-radius:5px; cursor:pointer; font-weight:bold;">BUY 500💰</button>
+        </div>
+        <button onclick="toggleShop()" style="margin-top:20px; background:#333; color:white; padding:10px 20px; border:none; border-radius:10px;">CLOSE</button>
+    </div>
 </div>
 
 <div id="status-hud">
@@ -87,17 +135,15 @@
         <div id="energy-bar"></div>
         <div class="energy-text">ENERGY: <span id="en-val">100</span>%</div>
     </div>
-    <div id="boost-tray">
-        <div class="boost-icon" id="boost-x2"><div>X2 💰</div><div id="timer-x2">05:00</div></div>
-    </div>
+    <div id="boost-tray"></div>
 </div>
 
 <div id="stage">
     <div class="target" id="t-box" style="display:none">
         <img id="t-img" src="">
     </div>
+    <button id="upload-btn" onclick="document.getElementById('f').click()" style="pointer-events:auto; padding:20px; border:none; background:white; color:black; border-radius:15px; font-weight:bold; cursor:pointer; box-shadow:0 10px 0 #ccc;">UPLOAD TARGET IMAGE</button>
     <input type="file" id="f" hidden accept="image/*">
-    <button id="upload-btn" onclick="document.getElementById('f').click()" style="pointer-events:auto; padding:20px; border-radius:10px; font-weight:bold;">UPLOAD TARGET IMAGE</button>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -106,34 +152,60 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     
-    let state = { gold: 0, gems: 0, energy: 100, isBoosted: true };
+    let state = { gold: 0, gems: 0, energy: 100, boostTimer: 0 };
     let mouse = { x: -100, y: -100 };
     let points = [];
-    let segments = 35;
+    let segments = 30;
 
-    // Load your Whip Asset
-    const whipHandleImg = new Image();
-    whipHandleImg.src = 'IMG_8807.png';
+    // Load your custom assets from repo
+    const whipHandle = new Image();
+    whipHandle.src = 'IMG_8807.png'; // Your whip drawing
 
     for(let i=0; i<segments; i++) points.push({x:0, y:0, oldX:0, oldY:0});
 
     window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     window.onresize();
 
+    function toggleShop() {
+        const modal = document.getElementById('shop-modal');
+        modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function buyBoost() {
+        if(state.gold >= 500) {
+            state.gold -= 500;
+            state.boostTimer = 300; // 5 minutes
+            document.getElementById('gold-txt').innerText = state.gold;
+            toggleShop();
+            updateBoostTray();
+        } else {
+            alert("Not enough coins!");
+        }
+    }
+
+    function updateBoostTray() {
+        const tray = document.getElementById('boost-tray');
+        if(state.boostTimer > 0) {
+            tray.innerHTML = `<div class="boost-active"><div>X2 💰</div><div id="btimer">${Math.floor(state.boostTimer/60)}:${(state.boostTimer%60).toString().padStart(2,'0')}</div></div>`;
+        } else {
+            tray.innerHTML = "";
+        }
+    }
+
     // Physics Engine
     function solve() {
         points[0].x = mouse.x; points[0].y = mouse.y;
         for(let i=1; i<segments; i++) {
             let p = points[i];
-            let vx = (p.x - p.oldX) * 0.82;
-            let vy = (p.y - p.oldY) * 0.82;
+            let vx = (p.x - p.oldX) * 0.85;
+            let vy = (p.y - p.oldY) * 0.85;
             p.oldX = p.x; p.oldY = p.y;
-            p.x += vx; p.y += vy + 0.8;
-            for(let j=0; j<5; j++) {
+            p.x += vx; p.y += vy + 0.5;
+            for(let j=0; j<4; j++) {
                 let prev = points[i-1];
                 let dx = p.x - prev.x, dy = p.y - prev.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                let diff = (8 - dist) / dist;
+                let diff = (9 - dist) / dist;
                 p.x += dx * diff; p.y += dy * diff;
             }
         }
@@ -143,30 +215,33 @@
         ctx.clearRect(0,0,canvas.width, canvas.height);
         solve();
 
-        // Draw Whip
+        // DRAW WHIP ROPE
         ctx.lineJoin = "round"; ctx.lineCap = "round";
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 6;
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
         for(let i=1; i<segments; i++) ctx.lineTo(points[i].x, points[i].y);
         ctx.stroke();
 
-        // Draw Handle from your IMG_8807.png
-        ctx.save();
-        ctx.translate(points[0].x, points[0].y);
-        let angle = Math.atan2(points[5].y - points[0].y, points[5].x - points[0].x);
-        ctx.rotate(angle);
-        ctx.drawImage(whipHandleImg, -10, -10, 60, 20); // Adjust size as needed
-        ctx.restore();
+        // DRAW CUSTOM HANDLE (IMG_8807)
+        if (whipHandle.complete) {
+            ctx.save();
+            ctx.translate(points[0].x, points[0].y);
+            let angle = Math.atan2(points[3].y - points[0].y, points[3].x - points[0].x);
+            ctx.rotate(angle);
+            // Flip and adjust handle position to match cursor
+            ctx.drawImage(whipHandle, -15, -15, 80, 30);
+            ctx.restore();
+        }
 
         requestAnimationFrame(render);
     }
     render();
 
-    // Interaction Logic
+    // Hit Logic
     const handleHit = (e) => {
-        if(state.energy <= 0) return;
+        if(state.energy <= 0 || document.getElementById('t-box').style.display === 'none') return;
 
         const img = document.getElementById('t-img');
         const rect = img.getBoundingClientRect();
@@ -174,33 +249,37 @@
         const y = e.touches ? e.touches[0].clientY : e.clientY;
 
         if(x > rect.left && x < rect.right && y > rect.top && y < rect.bottom) {
-            // Mechanics
-            state.gold += state.isBoosted ? 20 : 10;
-            state.energy -= 2;
+            let gain = state.boostTimer > 0 ? 40 : 20;
+            state.gold += gain;
+            state.energy -= 1;
             
-            // UI Updates
             document.getElementById('gold-txt').innerText = state.gold;
             document.getElementById('en-val').innerText = Math.max(0, state.energy);
             document.getElementById('energy-bar').style.width = state.energy + "%";
             
-            // Animation
-            document.getElementById('t-box').style.transform = "scale(0.9) rotate(5deg)";
+            document.getElementById('t-box').style.transform = "scale(0.95)";
             setTimeout(()=> document.getElementById('t-box').style.transform="scale(1)", 50);
         }
     };
 
-    // Auto Recharge Energy
+    // Game Loops (Energy recharge & Boost countdown)
     setInterval(() => {
         if(state.energy < 100) {
-            state.energy = Math.min(100, state.energy + 1);
+            state.energy++;
             document.getElementById('en-val').innerText = state.energy;
             document.getElementById('energy-bar').style.width = state.energy + "%";
         }
+        if(state.boostTimer > 0) {
+            state.boostTimer--;
+            updateBoostTray();
+        }
     }, 1000);
 
-    // Setup
     window.addEventListener('mousedown', handleHit);
     window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    window.addEventListener('touchstart', (e) => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; handleHit(e); });
+    window.addEventListener('touchmove', (e) => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; });
+
     document.getElementById('f').onchange = (e) => {
         document.getElementById('t-img').src = URL.createObjectURL(e.target.files[0]);
         document.getElementById('t-box').style.display = 'block';
